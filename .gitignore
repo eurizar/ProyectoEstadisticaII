@@ -1,0 +1,12 @@
+venv/
+.env
+__pycache__/
+*.pyc
+*.pyo
+.streamlit/secrets.toml
+*.log
+.DS_Store
+data/*.csv
+!data/encuesta_ejemplo.csv
+*.pdf
+data/*.pdf

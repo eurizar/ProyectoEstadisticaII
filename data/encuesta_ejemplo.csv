@@ -1,0 +1,51 @@
+edad,grupo_etario,genero,ocupacion,ingreso_mensual,metodo_pago_preferido,frecuencia_efectivo,frecuencia_digital,tipo_comercio,gasto_semanal,razon_metodo,uso_billetera_digital,confianza_digital
+19,18-25,Masculino,Estudia,<Q1500,Billetera digital,A veces,Casi siempre,Supermercado,180.00,Rapidez,True,4
+22,18-25,Femenino,Estudia,<Q1500,Billetera digital,Nunca,Siempre,Restaurante,210.00,Rapidez,True,5
+21,18-25,Masculino,Ambas,Q1500-3000,Tarjeta debito,A veces,Casi siempre,Supermercado,320.00,Seguridad,True,4
+24,18-25,Femenino,Estudia,<Q1500,Billetera digital,Nunca,Siempre,Farmacia,145.00,Rapidez,True,5
+20,18-25,Masculino,Estudia,<Q1500,Efectivo,Siempre,Nunca,Tienda de barrio,95.00,Costumbre,False,2
+23,18-25,Femenino,Trabaja,Q1500-3000,Billetera digital,A veces,Siempre,Restaurante,280.00,Rapidez,True,4
+25,18-25,Masculino,Trabaja,Q1500-3000,Transferencia,A veces,Casi siempre,Supermercado,350.00,Seguridad,True,4
+18,18-25,Femenino,Estudia,<Q1500,Efectivo,Casi siempre,A veces,Tienda de barrio,110.00,Acceso,False,2
+24,18-25,Masculino,Ambas,Q1500-3000,Tarjeta debito,A veces,Casi siempre,Supermercado,295.00,Seguridad,True,3
+22,18-25,Femenino,Estudia,<Q1500,Billetera digital,Nunca,Siempre,Farmacia,165.00,Rapidez,True,5
+19,18-25,Masculino,Estudia,<Q1500,Efectivo,Siempre,Nunca,Tienda de barrio,85.00,Costumbre,False,1
+23,18-25,Femenino,Trabaja,Q1500-3000,Billetera digital,A veces,Casi siempre,Supermercado,310.00,Rapidez,True,4
+21,18-25,Masculino,Estudia,<Q1500,Transferencia,A veces,Casi siempre,Restaurante,240.00,Rapidez,True,3
+20,18-25,Femenino,Estudia,<Q1500,Efectivo,Siempre,Nunca,Tienda de barrio,90.00,Costumbre,False,2
+25,18-25,Masculino,Ambas,Q1500-3000,Tarjeta debito,A veces,Casi siempre,Farmacia,275.00,Seguridad,True,4
+28,26-35,Femenino,Trabaja,Q3000-5000,Tarjeta debito,A veces,Casi siempre,Supermercado,420.00,Seguridad,True,4
+31,26-35,Masculino,Trabaja,Q3000-5000,Billetera digital,A veces,Siempre,Restaurante,480.00,Rapidez,True,5
+27,26-35,Femenino,Trabaja,Q1500-3000,Transferencia,A veces,Casi siempre,Supermercado,380.00,Seguridad,True,4
+34,26-35,Masculino,Trabaja,Q3000-5000,Tarjeta credito,Nunca,Siempre,Supermercado,550.00,Acceso,True,4
+29,26-35,Femenino,Ambas,Q3000-5000,Billetera digital,A veces,Siempre,Farmacia,360.00,Rapidez,True,5
+33,26-35,Masculino,Trabaja,Q3000-5000,Transferencia,A veces,Casi siempre,Servicios,410.00,Seguridad,True,4
+26,26-35,Femenino,Trabaja,Q1500-3000,Efectivo,Casi siempre,A veces,Tienda de barrio,195.00,Costumbre,False,2
+30,26-35,Masculino,Trabaja,Q3000-5000,Tarjeta debito,A veces,Casi siempre,Supermercado,445.00,Seguridad,True,4
+35,26-35,Femenino,Trabaja,Q5000-10000,Tarjeta credito,Nunca,Siempre,Restaurante,620.00,Rapidez,True,5
+32,26-35,Masculino,Trabaja,Q3000-5000,Billetera digital,A veces,Casi siempre,Farmacia,390.00,Rapidez,True,4
+28,26-35,Femenino,Ambas,Q3000-5000,Efectivo,Casi siempre,A veces,Tienda de barrio,215.00,Costumbre,False,2
+27,26-35,Masculino,Trabaja,Q1500-3000,Transferencia,A veces,Casi siempre,Transporte,340.00,Acceso,True,3
+31,26-35,Femenino,Trabaja,Q3000-5000,Tarjeta debito,A veces,Casi siempre,Supermercado,460.00,Seguridad,True,4
+29,26-35,Masculino,Trabaja,Q3000-5000,Efectivo,Casi siempre,Nunca,Tienda de barrio,185.00,Costumbre,False,2
+34,26-35,Femenino,Trabaja,Q5000-10000,Billetera digital,Nunca,Siempre,Restaurante,580.00,Rapidez,True,5
+38,36-50,Masculino,Trabaja,Q3000-5000,Efectivo,Siempre,Nunca,Tienda de barrio,265.00,Costumbre,False,1
+42,36-50,Femenino,Ama de casa,Q1500-3000,Efectivo,Siempre,Nunca,Tienda de barrio,245.00,Costumbre,False,1
+45,36-50,Masculino,Trabaja,Q5000-10000,Tarjeta debito,Casi siempre,A veces,Supermercado,510.00,Seguridad,True,3
+39,36-50,Femenino,Trabaja,Q3000-5000,Efectivo,Siempre,A veces,Tienda de barrio,290.00,Costumbre,False,2
+48,36-50,Masculino,Trabaja,Q5000-10000,Tarjeta credito,A veces,Casi siempre,Supermercado,640.00,Seguridad,True,4
+41,36-50,Femenino,Ama de casa,Q1500-3000,Efectivo,Siempre,Nunca,Tienda de barrio,220.00,Costumbre,False,1
+36,36-50,Masculino,Trabaja,Q3000-5000,Transferencia,Casi siempre,A veces,Servicios,380.00,Acceso,True,3
+50,36-50,Femenino,Trabaja,Q5000-10000,Efectivo,Casi siempre,A veces,Supermercado,410.00,Costumbre,False,2
+43,36-50,Masculino,Trabaja,Q3000-5000,Efectivo,Siempre,Nunca,Tienda de barrio,275.00,Costumbre,False,1
+47,36-50,Femenino,Ama de casa,Q1500-3000,Efectivo,Siempre,Nunca,Farmacia,200.00,Costumbre,False,2
+44,36-50,Masculino,Trabaja,Q5000-10000,Tarjeta debito,A veces,Casi siempre,Supermercado,530.00,Seguridad,True,3
+37,36-50,Femenino,Trabaja,Q3000-5000,Efectivo,Casi siempre,A veces,Tienda de barrio,255.00,Costumbre,False,2
+55,51+,Masculino,Trabaja,Q3000-5000,Efectivo,Siempre,Nunca,Tienda de barrio,305.00,Costumbre,False,1
+62,51+,Femenino,Jubilado,<Q1500,Efectivo,Siempre,Nunca,Tienda de barrio,180.00,Costumbre,False,1
+58,51+,Masculino,Trabaja,Q5000-10000,Efectivo,Siempre,Nunca,Supermercado,450.00,Costumbre,False,1
+67,51+,Femenino,Jubilado,<Q1500,Efectivo,Siempre,Nunca,Farmacia,150.00,Costumbre,False,1
+53,51+,Masculino,Trabaja,Q3000-5000,Efectivo,Casi siempre,Nunca,Tienda de barrio,290.00,Costumbre,False,1
+59,51+,Femenino,Ama de casa,Q1500-3000,Efectivo,Siempre,Nunca,Tienda de barrio,195.00,Costumbre,False,1
+64,51+,Masculino,Jubilado,<Q1500,Efectivo,Siempre,Nunca,Tienda de barrio,140.00,Unico disponible,False,1
+70,51+,Femenino,Jubilado,<Q1500,Efectivo,Siempre,Nunca,Farmacia,130.00,Unico disponible,False,1
