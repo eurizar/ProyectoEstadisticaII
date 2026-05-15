@@ -97,7 +97,8 @@ def iniciar_sesion(email: str, contrasena: str) -> tuple[bool, str]:
             st.session_state["user_email"]    = usuario.email
             st.session_state["access_token"]  = sesion.access_token
             st.session_state["refresh_token"] = sesion.refresh_token
-            # Wait until next page loads to save token so switch_page doesn't abort it
+            st.session_state.pop("modo_publico", None)
+            _js_limpiar_publico()
             return True, f"Bienvenido, {usuario.email}"
         return False, "Credenciales incorrectas."
     except Exception as e:
@@ -162,44 +163,30 @@ def cerrar_modo_publico() -> None:
 def requerir_autenticacion(permitir_publico: bool = False) -> None:
     """
     Llama al inicio de cada pagina protegida.
-    Flujo de restauracion:
-      1. session_state ya tiene sesion → ok
-      2. modo_publico activo y permitir_publico=True → ok
-      3. modo_publico activo y permitir_publico=False → redirige a Resultados
-      4. URL tiene ?_rt=TOKEN (puesto por el JS de localStorage) → refresh con Supabase
-      5. Nada → inyecta #unauth-marker; el JS de ui_helpers redirige con el token
+    Flujo de restauracion (orden de prioridad):
+      1. session_state ya tiene sesion autenticada → ok (ignora visitor cookie)
+      2. Cookie umg_rt valida → restaura sesion → ok
+      3. URL ?_rt=TOKEN → restaura sesion → ok
+      4. session_state modo_publico activo → visitor mode
+      5. Cookie umg_pub=1 → visitor mode (solo si no hay sesion auth)
+      6. Nada → JS fallback via localStorage → stop
     """
-    if es_modo_publico():
-        if permitir_publico:
-            _js_guardar_publico()
-            return
-        st.switch_page("pages/4_Resultados.py")
-
-    # Restauracion de modo publico tras F5: leer cookie umg_pub
-    if hasattr(st, "context") and hasattr(st.context, "cookies"):
-        if st.context.cookies.get("umg_pub") == "1":
-            st.session_state["modo_publico"] = True
-            if permitir_publico:
-                return
-            st.switch_page("pages/4_Resultados.py")
-
+    # ── Autenticacion: mayor prioridad, ignora cookies de visitante ────────
     if verificar_sesion():
-        # Asegurar que el token persista (despues de login o recarga exitosa)
         rt = st.session_state.get("refresh_token")
         if rt:
             _js_guardar_token(rt)
         return
 
-    # 1. Intento de restauracion rápida y sin parpadeos vía Cookie
+    # Restauracion via cookie de auth
     if hasattr(st, "context") and hasattr(st.context, "cookies"):
         cookie_rt = st.context.cookies.get("umg_rt")
         if cookie_rt:
             if _restaurar_sesion(cookie_rt):
                 return
-            # Si el token falló, lo limpiamos y caemos en el error
             _js_limpiar_token()
 
-    # 2. Intento de restauracion via parametro URL (fallback del JS)
+    # Restauracion via parametro URL
     rt = st.query_params.get("_rt", "")
     if rt:
         if _restaurar_sesion(rt):
@@ -208,12 +195,25 @@ def requerir_autenticacion(permitir_publico: bool = False) -> None:
             except Exception:
                 pass
             return
-        # Token invalido / expirado → limpiar
         _js_limpiar_token()
         try:
             del st.query_params["_rt"]
         except Exception:
             pass
+
+    # ── Visitor mode: solo si no hay sesion autenticada ────────────────────
+    if es_modo_publico():
+        if permitir_publico:
+            _js_guardar_publico()
+            return
+        st.switch_page("pages/4_Resultados.py")
+
+    if hasattr(st, "context") and hasattr(st.context, "cookies"):
+        if st.context.cookies.get("umg_pub") == "1":
+            st.session_state["modo_publico"] = True
+            if permitir_publico:
+                return
+            st.switch_page("pages/4_Resultados.py")
 
     # Componente que intenta restaurar la sesión sorteando el sandbox del iframe
     components.html("""
