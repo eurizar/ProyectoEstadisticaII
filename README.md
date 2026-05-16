@@ -117,16 +117,33 @@ ProyectoEstaditicall/
 
 ## Instalación y configuración
 
+### Requisito: Python 3.12
+
+Este proyecto requiere **Python 3.12**. Python 3.13+ no tiene soporte completo para todas las dependencias aún.
+
+```powershell
+# Instalar Python 3.12 (si no está instalado)
+winget install Python.Python.3.12
+
+# Verificar
+py -3.12 --version
+```
+
 ### 1. Clonar y preparar entorno
 
 ```powershell
 # Clonar repositorio
 git clone <url-del-repositorio>
-cd ProyectoEstaditicall
+cd ProyectoEstadisticaII
 
-# Activar entorno virtual (Windows PowerShell)
+# Permitir scripts en PowerShell (solo primera vez)
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-.\venv\Scripts\Activate.ps1
+
+# Crear entorno virtual con Python 3.12
+py -3.12 -m venv venv312
+
+# Activar entorno virtual
+venv312\Scripts\Activate.ps1
 
 # Instalar dependencias
 pip install -r requirements.txt
