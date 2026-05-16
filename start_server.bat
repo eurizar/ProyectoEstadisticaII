@@ -8,15 +8,15 @@ echo.
 cd /d "%~dp0"
 
 :: Verificar si existe el entorno virtual
-if not exist "venv\Scripts\activate.bat" (
-    echo [ERROR] No se encontro el entorno virtual en la carpeta 'venv'.
-    echo Por favor, asegurese de crearlo e instalar las dependencias.
+if not exist "venv312\Scripts\activate.bat" (
+    echo [ERROR] No se encontro el entorno virtual en la carpeta 'venv312'.
+    echo Ejecute: py -3.12 -m venv venv312 y luego pip install -r requirements.txt
     pause
     exit /b 1
 )
 
 echo [1/2] Activando entorno virtual...
-call venv\Scripts\activate.bat
+call venv312\Scripts\activate.bat
 
 echo [2/2] Levantando servidor con Streamlit...
 echo.
