@@ -117,11 +117,19 @@ def decision_chi_cuadrado(resultado: ResultadoPrueba) -> Decision:
     p = resultado.p_valor
     alpha = resultado.alpha
 
+    nota_colapso = d.get("nota_colapso", "")
+    sufijo_metodo = (
+        " Nota: las categorías fueron agrupadas (Jóvenes 18-25 / Adultos 26+ · Efectivo / Digital) "
+        "para garantizar la validez estadística del test (frecuencias esperadas ≥ 5)."
+        if nota_colapso else ""
+    )
+
     if resultado.rechaza_h0:
         decision = (
             f"Existe una asociacion estadisticamente significativa entre el grupo etario y el "
             f"metodo de pago preferido (chi2 = {resultado.estadistico:.4f}, "
             f"p = {p:.4f} < {alpha}, V de Cramer = {v_cramer:.3f} — {interpretacion_v})."
+            f"{sufijo_metodo}"
         )
         if v_cramer >= 0.30:
             conclusion = (
@@ -153,8 +161,9 @@ def decision_chi_cuadrado(resultado: ResultadoPrueba) -> Decision:
             nivel_alerta = "medio"
     else:
         decision = (
-            f"No existe evidencia estadistica de asociacion entre el grupo etario y el metodo "
-            f"de pago preferido (chi2 = {resultado.estadistico:.4f}, p = {p:.4f} >= {alpha})."
+            f"No existe evidencia estadistica de asociacion entre el grupo etario y el "
+            f"metodo de pago preferido (chi2 = {resultado.estadistico:.4f}, p = {p:.4f} >= {alpha})."
+            f"{sufijo_metodo}"
         )
         conclusion = (
             "Los datos no respaldan la hipotesis de una brecha generacional significativa en los "
@@ -282,7 +291,7 @@ def generar_todas_las_decisiones(
     return decisiones
 
 
-def resumen_ejecutivo(decisiones: list[Decision]) -> str:
+def resumen_ejecutivo(decisiones: list[Decision], n: int = 0) -> str:
     """
     Genera un parrafo de resumen ejecutivo combinando las 3 decisiones.
     Util para el reporte PDF.
@@ -319,9 +328,10 @@ def resumen_ejecutivo(decisiones: list[Decision]) -> str:
     for d in decisiones:
         partes.append(f"En cuanto a la {d.prueba}: {d.conclusion}")
 
+    n_str = str(n) if n > 0 else "N"
     partes.append(
-        "Estos resultados deben interpretarse en el contexto de una muestra no probabilistica "
-        "de 50 consumidores de Coban, Alta Verapaz, y no deben generalizarse sin un estudio "
+        f"Estos resultados deben interpretarse en el contexto de una muestra no probabilistica "
+        f"de {n_str} consumidores de Coban, Alta Verapaz, y no deben generalizarse sin un estudio "
         "de mayor escala y representatividad."
     )
 

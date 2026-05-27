@@ -483,8 +483,8 @@ def mostrar_login():
                 try:
                     from modules.auth import iniciar_sesion
                     exito, mensaje = iniciar_sesion(email, contrasena)
-                except Exception as e:
-                    exito, mensaje = False, f"Error de conexión: {e}"
+                except Exception:
+                    exito, mensaje = False, "No se pudo conectar al servicio. Intenta de nuevo más tarde."
 
             if exito:
                 st.markdown(f"""
@@ -501,13 +501,6 @@ def mostrar_login():
                   <div><b>No fue posible iniciar sesión.</b><br/>{mensaje}</div>
                 </div>
                 """, unsafe_allow_html=True)
-                if "SUPABASE" in mensaje.upper() or "conexión" in mensaje.lower():
-                    st.markdown("""
-                    <div class="login-alert info">
-                      <i class="ti ti-info-circle"></i>
-                      <div>Verifica que el archivo <b>.env</b> contenga <code>SUPABASE_URL</code> y <code>SUPABASE_KEY</code>.</div>
-                    </div>
-                    """, unsafe_allow_html=True)
 
     # ── Visitor / public access ─────────────────────────────────
     st.markdown("""

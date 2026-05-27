@@ -102,6 +102,51 @@ def main():
 
     st.markdown("<div style='height:1.5rem'></div>", unsafe_allow_html=True)
 
+    # ── Distribución geográfica ───────────────────────────────
+    geo = st.session_state.get("geo_exclusion")
+    if geo and geo.get("excluidos", 0) > 0:
+        st.markdown(
+            '<p class="section-title"><i class="ti ti-map-pin"></i> Cobertura geográfica de la muestra</p>',
+            unsafe_allow_html=True,
+        )
+        import plotly.graph_objects as go
+        col_geo1, col_geo2 = st.columns([1, 2])
+        with col_geo1:
+            fig_geo = go.Figure(go.Pie(
+                labels=["Cobán, A.V. (incluidos)", "Otros municipios (excluidos)"],
+                values=[geo["incluidos"], geo["excluidos"]],
+                hole=0.55,
+                marker_colors=["#1A237E", "#E0E0E0"],
+                textinfo="percent+value",
+                hovertemplate="%{label}<br>%{value} encuestas (%{percent})<extra></extra>",
+            ))
+            fig_geo.update_layout(
+                margin=dict(t=20, b=20, l=20, r=20),
+                showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=-0.2),
+                height=280,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Inter, sans-serif", size=12),
+            )
+            st.plotly_chart(fig_geo, use_container_width=True, config={"displayModeBar": False})
+        with col_geo2:
+            st.markdown(f"""
+            <div class="decision-card bajo fade-in" style="border-left:4px solid #1565C0; margin-top:.5rem">
+                <div class="d-label" style="color:#1565C0">
+                    <i class="ti ti-info-circle"></i> Nota metodológica
+                </div>
+                <p>
+                    De las <strong>{geo['total_original']}</strong> encuestas recolectadas,
+                    <strong>{geo['incluidos']}</strong> corresponden a residentes de
+                    <strong>Cobán, Alta Verapaz</strong> y forman la muestra de análisis.
+                    Las <strong>{geo['excluidos']}</strong> respuestas de otros municipios
+                    se muestran aquí para transparencia pero <em>no se incluyen</em> en
+                    las pruebas estadísticas ni en las conclusiones del estudio.
+                </p>
+            </div>""", unsafe_allow_html=True)
+        st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+
     # ── Gráficas ──────────────────────────────────────────────
     if not df.empty:
         st.markdown(

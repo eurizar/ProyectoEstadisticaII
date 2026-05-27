@@ -111,29 +111,32 @@ def main():
         pruebas_ok = []
         for clave, nombre in nombres.items():
             res = resultados.get(clave)
+            # Acepta ResultadoPrueba objects o dicts (desde historial)
             if isinstance(res, ResultadoPrueba):
-                pruebas_ok.append({
-                    "tipo_prueba": res.tipo_prueba,
-                    "estadistico": res.estadistico,
-                    "p_valor": res.p_valor,
-                    "grados_libertad": res.grados_libertad,
-                    "rechaza_h0": res.rechaza_h0,
-                    "alpha": res.alpha,
-                    "detalles": res.detalles,
-                })
-                icon_color = "#E53935" if res.rechaza_h0 else "#2E7D32"
-                icon_name = "ti-circle-x" if res.rechaza_h0 else "ti-circle-check"
-                decision = "Rechaza H₀" if res.rechaza_h0 else "No rechaza H₀"
-                st.markdown(f"""
-                <div class="hyp-card">
-                    <span class="badge {'badge-danger' if res.rechaza_h0 else 'badge-success'}"
-                          style="float:right">{decision}</span>
-                    <div class="hyp-title">
-                        <i class="ti {icon_name}" style="color:{icon_color}"></i> {nombre}
-                    </div>
-                    Estadístico: <span class="text-mono">{res.estadistico:.4f}</span> ·
-                    p-valor: <span class="text-mono">{res.p_valor:.6f}</span>
-                </div>""", unsafe_allow_html=True)
+                pruebas_ok.append(res.a_dict())
+                rechaza  = res.rechaza_h0
+                estadist = res.estadistico
+                p_val    = res.p_valor
+            elif isinstance(res, dict) and "tipo_prueba" in res:
+                pruebas_ok.append(res)
+                rechaza  = res.get("rechaza_h0", False)
+                estadist = res.get("estadistico", 0)
+                p_val    = res.get("p_valor", 1)
+            else:
+                continue
+            icon_color = "#E53935" if rechaza else "#2E7D32"
+            icon_name  = "ti-circle-x" if rechaza else "ti-circle-check"
+            decision   = "Rechaza H₀" if rechaza else "No rechaza H₀"
+            st.markdown(f"""
+            <div class="hyp-card">
+                <span class="badge {'badge-danger' if rechaza else 'badge-success'}"
+                      style="float:right">{decision}</span>
+                <div class="hyp-title">
+                    <i class="ti {icon_name}" style="color:{icon_color}"></i> {nombre}
+                </div>
+                Estadístico: <span class="text-mono">{estadist:.4f}</span> ·
+                p-valor: <span class="text-mono">{p_val:.6f}</span>
+            </div>""", unsafe_allow_html=True)
 
         st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
@@ -162,7 +165,7 @@ def main():
                             )
                             objetos_decision.append(dec)
 
-                        resumen = resumen_ejecutivo(objetos_decision)
+                        resumen = resumen_ejecutivo(objetos_decision, n=analisis_info.get("total_registros", 0))
 
                         pdf_bytes = generar_pdf(
                             analisis_info=analisis_info,

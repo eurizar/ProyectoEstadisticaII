@@ -1,4 +1,13 @@
-"""Pruebas estadisticas inferenciales: t de Student, Chi-cuadrado, Z para proporcion."""
+"""
+Pruebas estadísticas inferenciales — Estadística II UMG, Cobán 2026.
+
+Tres pruebas aplicadas sobre hábitos de pago de consumidores:
+  1. t de Student  — compara gasto semanal entre usuarios de efectivo vs digital.
+  2. Chi-cuadrado  — evalúa si el grupo etario se asocia con el método de pago.
+  3. Z proporción  — contrasta si la adopción de billetera digital supera el 40%.
+
+Cada prueba retorna un ResultadoPrueba con estadístico, p-valor, decisión y detalles.
+"""
 
 import numpy as np
 import pandas as pd
@@ -31,9 +40,15 @@ class ResultadoPrueba:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PRUEBA 1: t de Student para diferencia de medias (dos muestras independientes)
-# H0: mu_efectivo = mu_digital
-# H1: mu_efectivo != mu_digital
+# PRUEBA 1: t de Student — diferencia de medias de gasto semanal
+# H0: mu_efectivo = mu_digital  (no hay diferencia)
+# H1: mu_efectivo ≠ mu_digital  (prueba bilateral)
+#
+# Procedimiento:
+#   1. Prueba de Levene → decide si varianzas son iguales o no.
+#   2. Si varianzas iguales  → t de Student clásica, gl = n1+n2-2.
+#   3. Si varianzas distintas → t de Welch, gl por fórmula Welch-Satterthwaite.
+#   4. Rechaza H0 si p-valor < alpha.
 # ─────────────────────────────────────────────────────────────────────────────
 
 def prueba_t_student(
@@ -41,10 +56,7 @@ def prueba_t_student(
     grupo_digital: pd.Series,
     alpha: float = 0.05,
 ) -> ResultadoPrueba:
-    """
-    Aplica la prueba t de Student de dos muestras independientes.
-    Usa Levene para decidir si asumir varianzas iguales o no (Welch).
-    """
+    """t de Student de dos muestras independientes con verificación de Levene."""
     efectivo = grupo_efectivo.dropna().astype(float)
     digital = grupo_digital.dropna().astype(float)
 
@@ -101,10 +113,34 @@ def prueba_t_student(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PRUEBA 2: Chi-cuadrado de independencia
+# PRUEBA 2: Chi-cuadrado de independencia — grupo etario vs método de pago
 # H0: grupo_etario y metodo_pago_preferido son independientes
-# H1: existe relacion significativa entre ambas variables
+# H1: existe asociación significativa entre ambas variables
+#
+# Supuesto clave: al menos 80% de las celdas deben tener frecuencia esperada >= 5.
+# Si no se cumple, se colapsan categorías automáticamente en hasta 2 niveles:
+#   Nivel 1: 3 grupos etarios (18-25 / 26-35 / 36+) × 2 métodos (Efectivo / Digital)
+#   Nivel 2: 2 grupos etarios (Jóvenes 18-25 / Adultos 26+) × 2 métodos
+# El nivel se elige según el tamaño de muestra; con n pequeño se llega al nivel 2.
+#
+# Medida de efecto: V de Cramer (0-1).
+#   < 0.10 despreciable · 0.10-0.29 pequeño · 0.30-0.49 moderado · >= 0.50 grande
 # ─────────────────────────────────────────────────────────────────────────────
+
+def _colapsar_grupos(df: pd.DataFrame, nivel: int = 1) -> pd.DataFrame:
+    """Colapsa categorías para cumplir supuesto chi² (frec. esperada >= 5)."""
+    df = df.copy()
+    df["metodo_pago_preferido"] = df["metodo_pago_preferido"].apply(
+        lambda v: "Efectivo" if str(v).lower() == "efectivo" else "Digital"
+    )
+    if nivel == 1:
+        df["grupo_etario"] = df["grupo_etario"].replace({"36-50": "36+", "51+": "36+"})
+    else:
+        df["grupo_etario"] = df["grupo_etario"].apply(
+            lambda v: "Jovenes (18-25)" if str(v).startswith("18") else "Adultos (26+)"
+        )
+    return df
+
 
 def prueba_chi_cuadrado(
     df: pd.DataFrame,
@@ -112,41 +148,60 @@ def prueba_chi_cuadrado(
     columna_columna: str = "metodo_pago_preferido",
     alpha: float = 0.05,
 ) -> ResultadoPrueba:
-    """Aplica la prueba Chi-cuadrado de independencia sobre una tabla de contingencia."""
-    tabla_contingencia = pd.crosstab(df[columna_fila], df[columna_columna])
+    """Chi-cuadrado con colapso automático de categorías si el supuesto no se cumple."""
+    def _ejecutar(datos: pd.DataFrame):
+        tabla = pd.crosstab(datos[columna_fila], datos[columna_columna])
+        if tabla.shape[0] < 2 or tabla.shape[1] < 2:
+            raise ValueError("Se necesitan al menos 2 categorias en cada variable.")
+        chi2, p, gl, esp = stats.chi2_contingency(tabla)
+        return tabla, chi2, p, gl, esp
 
-    if tabla_contingencia.shape[0] < 2 or tabla_contingencia.shape[1] < 2:
-        raise ValueError(
-            "Se necesitan al menos 2 categorias en cada variable para la prueba Chi-cuadrado."
-        )
+    tabla, chi2, p_valor, gl, freq_esp = _ejecutar(df)
 
-    chi2, p_valor, gl, frecuencias_esperadas = stats.chi2_contingency(tabla_contingencia)
+    total_celdas  = freq_esp.size
+    celdas_bajas  = int(np.sum(freq_esp < 5))
+    pct_bajas     = round((celdas_bajas / total_celdas) * 100, 1)
+    supuesto_ok   = pct_bajas <= 20
+    categorias_colapsadas = False
 
-    # Verificar supuesto: <= 20% de celdas con frecuencia esperada < 5
-    total_celdas = frecuencias_esperadas.size
-    celdas_bajas = np.sum(frecuencias_esperadas < 5)
-    porcentaje_bajas = round((celdas_bajas / total_celdas) * 100, 1)
+    nivel_colapso = 0
+    if not supuesto_ok:
+        for nivel in (1, 2):
+            df_col = _colapsar_grupos(df, nivel)
+            tabla, chi2, p_valor, gl, freq_esp = _ejecutar(df_col)
+            total_celdas = freq_esp.size
+            celdas_bajas = int(np.sum(freq_esp < 5))
+            pct_bajas    = round((celdas_bajas / total_celdas) * 100, 1)
+            supuesto_ok  = pct_bajas <= 20
+            nivel_colapso = nivel
+            categorias_colapsadas = True
+            if supuesto_ok:
+                break
 
-    # V de Cramer como medida del tamano del efecto
-    n = tabla_contingencia.sum().sum()
-    min_dim = min(tabla_contingencia.shape[0] - 1, tabla_contingencia.shape[1] - 1)
+    n       = int(tabla.sum().sum())
+    min_dim = min(tabla.shape[0] - 1, tabla.shape[1] - 1)
     v_cramer = round(float(np.sqrt(chi2 / (n * min_dim))), 4) if min_dim > 0 else 0.0
-
     rechaza_h0 = float(p_valor) < alpha
 
     detalles = {
-        "tabla_contingencia": tabla_contingencia.to_dict(),
+        "tabla_contingencia": tabla.to_dict(),
         "frecuencias_esperadas": pd.DataFrame(
-            frecuencias_esperadas,
-            index=tabla_contingencia.index,
-            columns=tabla_contingencia.columns,
+            freq_esp, index=tabla.index, columns=tabla.columns,
         ).round(2).to_dict(),
-        "celdas_con_frecuencia_baja": int(celdas_bajas),
-        "porcentaje_celdas_bajas": porcentaje_bajas,
-        "supuesto_cumplido": bool(porcentaje_bajas <= 20),
+        "celdas_con_frecuencia_baja": celdas_bajas,
+        "porcentaje_celdas_bajas": pct_bajas,
+        "supuesto_cumplido": bool(supuesto_ok),
+        "categorias_colapsadas": categorias_colapsadas,
+        "nota_colapso": (
+            "Grupos colapsados para cumplir supuesto chi² (frec. esperada >= 5): "
+            + ("grupo_etario: 18-25 / 26-35 / 36+  |  metodo_pago: Efectivo / Digital"
+               if nivel_colapso == 1 else
+               "grupo_etario: Jovenes 18-25 / Adultos 26+  |  metodo_pago: Efectivo / Digital")
+            if categorias_colapsadas else ""
+        ),
         "v_cramer": v_cramer,
         "interpretacion_v_cramer": _interpretar_v_cramer(v_cramer),
-        "n_total": int(n),
+        "n_total": n,
     }
 
     return ResultadoPrueba(
@@ -172,9 +227,18 @@ def _interpretar_v_cramer(v: float) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PRUEBA 3: Z para proporcion (una muestra)
-# H0: p <= 0.40 (uso de billetera digital)
-# H1: p > 0.40 (prueba unilateral derecha)
+# PRUEBA 3: Z para proporción — adopción de billetera digital
+# H0: p <= 0.40  (adopción no supera el 40%)
+# H1: p >  0.40  (prueba unilateral derecha)
+#
+# Procedimiento:
+#   1. p_muestral = éxitos / n
+#   2. Z = (p_muestral - p0) / sqrt(p0*(1-p0)/n)
+#   3. p-valor = P(Z > z_obs)  — área a la derecha bajo la normal estándar
+#   4. Rechaza H0 si Z > z_crítico (= z_{1-alpha}) o equivalente p-valor < alpha
+#   5. IC 95% bilateral sobre p_muestral para contextualizar el estimado.
+#
+# Supuesto: n*p0 >= 5  y  n*(1-p0) >= 5  (aproximación normal válida).
 # ─────────────────────────────────────────────────────────────────────────────
 
 def prueba_z_proporcion(
@@ -182,10 +246,7 @@ def prueba_z_proporcion(
     p0: float = 0.40,
     alpha: float = 0.05,
 ) -> ResultadoPrueba:
-    """
-    Aplica la prueba Z para una proporcion poblacional.
-    Prueba unilateral derecha: H1: p > p0.
-    """
+    """Z para una proporción poblacional, prueba unilateral derecha (H1: p > p0)."""
     datos = serie_uso.dropna()
     n = len(datos)
 

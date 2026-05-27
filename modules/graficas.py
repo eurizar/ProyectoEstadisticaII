@@ -203,8 +203,17 @@ def grafica_barras_apiladas_100(resultado_chi: dict) -> go.Figure:
         return go.Figure()
 
     df_tabla = pd.DataFrame(tabla)
-    orden_filas = ["18-25", "26-35", "36-50", "51+"]
-    df_tabla = df_tabla.reindex([f for f in orden_filas if f in df_tabla.index])
+    # Orden preferido para grupos originales; grupos colapsados se ordenan tal cual
+    orden_preferido = ["18-25", "26-35", "36-50", "51+",
+                       "Jovenes (18-25)", "Adultos (26+)", "36+"]
+    orden_filas = [f for f in orden_preferido if f in df_tabla.index]
+    # Agregar cualquier grupo no contemplado al final
+    orden_filas += [f for f in df_tabla.index if f not in orden_filas]
+    df_tabla = df_tabla.reindex(orden_filas)
+    df_tabla = df_tabla.dropna(how="all")
+
+    if df_tabla.empty:
+        return go.Figure()
 
     # Convertir a porcentajes por fila
     totales = df_tabla.sum(axis=1).replace(0, np.nan)
@@ -217,10 +226,8 @@ def grafica_barras_apiladas_100(resultado_chi: dict) -> go.Figure:
         valores_pct = pct[metodo].values
         valores_abs = df_tabla[metodo].values
         color = paleta[i % len(paleta)]
-        # Etiqueta solo si segmento >= 8% (evita texto encimado)
         textos = [f"{p:.0f}%" if p >= 8 else "" for p in valores_pct]
-        # Color texto: blanco sobre tonos oscuros, navy sobre claros
-        text_colors = ["white" if i < 3 else CORP_NAVY for _ in valores_pct]
+        text_color = "white" if i < 3 else CORP_NAVY
 
         fig.add_trace(go.Bar(
             name=metodo,
@@ -230,7 +237,7 @@ def grafica_barras_apiladas_100(resultado_chi: dict) -> go.Figure:
             text=textos,
             textposition="inside",
             insidetextanchor="middle",
-            textfont=dict(family="JetBrains Mono", size=11, color=text_colors[0]),
+            textfont=dict(family="JetBrains Mono", size=11, color=text_color),
             marker=dict(color=color, line=dict(width=0)),
             hovertemplate=(
                 f"<b>{metodo}</b><br>"
@@ -270,10 +277,12 @@ def grafica_heatmap_chi_cuadrado(resultado_chi: dict) -> go.Figure:
 
     df_tabla = pd.DataFrame(tabla)
     df_esp = pd.DataFrame(esperadas) if esperadas else df_tabla * 0
-    orden_filas = ["18-25", "26-35", "36-50", "51+"]
-    filas_presentes = [f for f in orden_filas if f in df_tabla.index]
-    df_tabla = df_tabla.reindex(filas_presentes)
-    df_esp = df_esp.reindex(filas_presentes)
+    orden_preferido = ["18-25", "26-35", "36-50", "51+",
+                       "Jovenes (18-25)", "Adultos (26+)", "36+"]
+    filas_presentes = [f for f in orden_preferido if f in df_tabla.index]
+    filas_presentes += [f for f in df_tabla.index if f not in filas_presentes]
+    df_tabla = df_tabla.reindex(filas_presentes).dropna(how="all")
+    df_esp   = df_esp.reindex(df_tabla.index)
 
     # Porcentaje por fila (perfil de cada grupo etario)
     totales_fila = df_tabla.sum(axis=1).replace(0, np.nan)
@@ -452,9 +461,9 @@ def grafica_dispersion(df: pd.DataFrame) -> go.Figure:
         fig.add_trace(go.Scatter(
             x=x_line, y=y_line,
             mode="lines",
-            name=f"Tendencia OLS (r = {r:+.3f})",
+            name=f"Tendencia OLS (r = {r:.3f})",
             line=dict(color=ROJO_ALERTA, width=2.5, dash="dash"),
-            hovertemplate=f"<b>Tendencia lineal</b><br>pendiente: {coef[0]:.2f} Q/año<br>r: {r:+.3f}<extra></extra>",
+            hovertemplate=f"<b>Tendencia lineal</b><br>pendiente: {coef[0]:.2f} Q/año<br>r = {r:.3f}<extra></extra>",
         ))
 
     fig.update_traces(
@@ -495,7 +504,7 @@ def grafica_z_proporcion(resultado_z: dict) -> go.Figure:
         fill="toself",
         fillcolor="rgba(200, 16, 46, 0.18)",
         line=dict(color=ROJO_ALERTA, width=1),
-        name=f"Zona rechazo · α={alpha}",
+        name=f"Zona rechazo  a={alpha}",
         hoverinfo="skip",
     ))
 
@@ -566,7 +575,15 @@ def grafica_ingreso_vs_metodo(df: pd.DataFrame) -> go.Figure:
         category_orders={"ingreso_mensual": ingreso_existentes},
     )
     fig.update_traces(marker_line_width=0, hovertemplate="<b>%{x}</b><br>%{fullData.name}: %{y}<extra></extra>")
-    return _estilo_corporativo(fig, height=320)
+    fig = _estilo_corporativo(fig, height=320)
+    fig.update_layout(
+        legend=dict(
+            orientation="v", x=1.02, xanchor="left",
+            y=1, yanchor="top", font=dict(size=9.5),
+        ),
+        margin=dict(r=140),
+    )
+    return fig
 
 
 def grafica_confianza_digital(df: pd.DataFrame) -> go.Figure:
@@ -624,39 +641,57 @@ def grafica_uso_billetera_digital(df: pd.DataFrame) -> go.Figure:
 
 
 def grafica_gasto_por_grupo_etario(df: pd.DataFrame) -> go.Figure:
-    """Barras con error: gasto semanal promedio por grupo etario."""
+    """Barras con error: gasto semanal promedio por grupo etario.
+    Grupos con n=1 se marcan en naranja — media no representativa."""
     orden = ["18-25", "26-35", "36-50", "51+"]
     grupos = [g for g in orden if g in df["grupo_etario"].unique()]
 
     medias, desv, n_grupos = [], [], []
     for grupo in grupos:
         sub = df[df["grupo_etario"] == grupo]["gasto_semanal"].dropna()
-        medias.append(sub.mean())
-        desv.append(sub.std(ddof=1) if len(sub) > 1 else 0)
+        medias.append(float(sub.mean()))
+        desv.append(float(sub.std(ddof=1)) if len(sub) > 1 else 0.0)
         n_grupos.append(len(sub))
 
-    # Tono navy según índice
     paleta = [CORP_NAVY, CORP_NAVY_2, CORP_NAVY_3, CORP_NAVY_4]
-    colores = [paleta[i % len(paleta)] for i in range(len(grupos))]
+    # Naranja para grupos con n=1 (outlier estadístico)
+    colores = [NARANJA if n == 1 else paleta[i % len(paleta)]
+               for i, n in enumerate(n_grupos)]
+    textos  = [f"Q{m:.0f}" for m in medias]
 
     fig = go.Figure(data=[go.Bar(
         x=grupos, y=medias,
-        error_y=dict(type="data", array=desv, visible=True, color=CORP_GRAY, thickness=1.2, width=8),
-        marker=dict(
-            color=colores,
-            line=dict(width=0),
-        ),
-        text=[f"Q{m:.0f}" for m in medias],
+        error_y=dict(type="data", array=desv, visible=True,
+                     color=CORP_GRAY, thickness=1.2, width=8),
+        marker=dict(color=colores, line=dict(width=0)),
+        text=textos,
         textposition="outside",
         textfont=dict(family="JetBrains Mono", size=11, color=CORP_NAVY),
-        hovertemplate="<b>%{x}</b><br>Media: <b>Q%{y:.2f}</b><br>n: <b>%{customdata}</b><extra></extra>",
+        hovertemplate=(
+            "<b>%{x}</b><br>"
+            "Media: <b>Q%{y:.2f}</b><br>"
+            "n: <b>%{customdata}</b><extra></extra>"
+        ),
         customdata=n_grupos,
     )])
+
+    hay_outlier = any(n == 1 for n in n_grupos)
     fig.update_layout(
         xaxis_title="", yaxis_title="Gasto medio (Q)",
         showlegend=False,
     )
-    return _estilo_corporativo(fig, height=300, show_legend=False)
+    fig = _estilo_corporativo(fig, height=340 if hay_outlier else 300, show_legend=False)
+
+    if hay_outlier:
+        grupos_n1 = [g for g, n in zip(grupos, n_grupos) if n == 1]
+        fig.add_annotation(
+            text=f"Barra naranja ({', '.join(grupos_n1)}): n=1 — media no representativa",
+            xref="paper", yref="paper", x=0, y=-0.14,
+            showarrow=False,
+            font=dict(size=9, color=NARANJA, family="Source Sans 3"),
+            align="left",
+        )
+    return fig
 
 
 def grafica_barras_categoria(df: pd.DataFrame, columna: str, titulo: str = None,

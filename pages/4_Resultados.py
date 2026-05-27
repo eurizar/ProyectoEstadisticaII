@@ -274,7 +274,7 @@ def main():
                 <b>{kpis['total_encuestados']}</b> registros</span>
               <span class="df-chip"><i class="ti ti-map-pin"></i> Cobán, A.V.</span>
               <span class="df-chip"><i class="ti ti-percentage"></i> α = <b>{alpha}</b></span>
-              <span class="df-chip"><i class="ti ti-flask"></i> <b>{n_sig}/{n_tests}</b> pruebas significativas</span>
+              <span class="df-chip"><i class="ti ti-flask"></i> <b>{n_sig} de {n_tests}</b> pruebas significativas</span>
               <span class="df-chip" style="margin-left:auto;font-family:var(--font-mono);font-size:.72rem">
                 <i class="ti ti-clock"></i> {ts}
               </span>
@@ -309,8 +309,10 @@ def main():
                               "adopción", icon="ti-wallet")
             kpi_html += _tile("Confianza", f"{kpis['confianza_promedio']:.1f}", "/5",
                               "índice 1–5", icon="ti-shield-check")
-            kpi_html += _tile("Decisión", f"{n_sig}", f"/{n_tests}",
-                              "tests rechazan H₀",
+            _dec_val  = f"{n_sig}" if n_tests > 0 else "—"
+            _dec_unit = f" de {n_tests}" if n_tests > 0 else ""
+            kpi_html += _tile("Decisión", _dec_val, _dec_unit,
+                              "pruebas significativas",
                               klass="warn" if n_sig > 0 else "",
                               icon="ti-target")
             kpi_html += '</div>'
@@ -364,7 +366,7 @@ def main():
                            t_badge[0] if t_badge else None,
                            t_badge[1] if t_badge else "test")
                 st.plotly_chart(grafica_gasto_semanal_boxplot(df),
-                                use_container_width=True, config=plotly_cfg)
+                                use_container_width=True, config=plotly_cfg, key="chart_boxplot")
                 _card_close(
                     '<span class="dcf-stat">Test · <b>t de Student</b></span>'
                     f'<span class="dcf-stat">μ efectivo vs μ digital</span>'
@@ -372,7 +374,7 @@ def main():
             with col_b:
                 _card_open("Gasto medio por grupo etario", "ti-chart-bar")
                 st.plotly_chart(grafica_gasto_por_grupo_etario(df),
-                                use_container_width=True, config=plotly_cfg)
+                                use_container_width=True, config=plotly_cfg, key="chart_gasto_etario")
                 _card_close('<span class="dcf-stat">Barras de error: <b>±1 SD</b></span>')
 
             # ── SECCIÓN 2 · Asociación (Chi²) ────────────────────
@@ -391,7 +393,7 @@ def main():
                            chi_badge[0] if chi_badge else None,
                            chi_badge[1] if chi_badge else "test")
                 st.plotly_chart(grafica_barras_apiladas_100(res_chi.detalles),
-                                use_container_width=True, config=plotly_cfg)
+                                use_container_width=True, config=plotly_cfg, key="chart_chi_apilado")
                 _card_close(
                     '<span class="dcf-stat">Lectura: <b>% de cada grupo</b> por método</span>'
                     '<span class="dcf-stat">Patrones iguales → independencia · distintos → asociación</span>'
@@ -416,7 +418,7 @@ def main():
                                z_badge[0] if z_badge else None,
                                z_badge[1] if z_badge else "test")
                     st.plotly_chart(grafica_z_proporcion(res_z.a_dict()),
-                                    use_container_width=True, config=plotly_cfg)
+                                    use_container_width=True, config=plotly_cfg, key="chart_z_dist")
                     _card_close(
                         f'<span class="dcf-stat">α = <b>{alpha}</b> (una cola)</span>'
                         f'<span class="dcf-stat">IC 95% disponible en detalles</span>'
@@ -424,7 +426,7 @@ def main():
             with col_z2:
                 _card_open("Confianza en pagos digitales", "ti-shield-check")
                 st.plotly_chart(grafica_confianza_digital(df),
-                                use_container_width=True, config=plotly_cfg)
+                                use_container_width=True, config=plotly_cfg, key="chart_confianza")
                 _card_close(
                     f'<span class="dcf-stat">Media · <b>{kpis["confianza_promedio"]:.2f} / 5</b></span>'
                 )
@@ -435,7 +437,7 @@ def main():
 
             _card_open("Edad vs gasto semanal", "ti-scatter-plot")
             st.plotly_chart(grafica_dispersion(df),
-                            use_container_width=True, config=plotly_cfg)
+                            use_container_width=True, config=plotly_cfg, key="chart_dispersion")
             _card_close(
                 '<span class="dcf-stat">Burbuja · <b>confianza digital</b></span>'
                 '<span class="dcf-stat">Color · método de pago</span>'
@@ -443,7 +445,7 @@ def main():
 
             _card_open("Ingreso mensual × método (apilado)", "ti-chart-histogram")
             st.plotly_chart(grafica_ingreso_vs_metodo(df),
-                            use_container_width=True, config=plotly_cfg)
+                            use_container_width=True, config=plotly_cfg, key="chart_ingreso_metodo")
             _card_close(
                 '<span class="dcf-stat">Distribución por rango de ingreso</span>'
             )
@@ -457,6 +459,7 @@ def main():
                     grafica_tabla_frecuencias(df, "metodo_pago_preferido",
                                               "Método de Pago"),
                     use_container_width=True, config={"displayModeBar": False},
+                    key="chart_freq_metodo",
                 )
                 _card_close()
             with col_f2:
@@ -465,6 +468,7 @@ def main():
                     grafica_tabla_frecuencias(df, "grupo_etario",
                                               "Grupo Etario"),
                     use_container_width=True, config={"displayModeBar": False},
+                    key="chart_freq_etario",
                 )
                 _card_close()
 
@@ -479,7 +483,7 @@ def main():
                     _card_open("¿Dónde paga el consumidor?", "ti-building-store")
                     st.plotly_chart(
                         grafica_barras_categoria(df, "tipo_comercio", horizontal=True),
-                        use_container_width=True, config=plotly_cfg,
+                        use_container_width=True, config=plotly_cfg, key="chart_tipo_comercio",
                     )
                     _card_close(
                         f'<span class="dcf-stat">Tipos únicos · <b>{df["tipo_comercio"].nunique()}</b></span>'
@@ -490,7 +494,7 @@ def main():
                     _card_open("¿Por qué prefiere ese método?", "ti-bulb")
                     st.plotly_chart(
                         grafica_barras_categoria(df, "razon_metodo", horizontal=True),
-                        use_container_width=True, config=plotly_cfg,
+                        use_container_width=True, config=plotly_cfg, key="chart_razon_metodo",
                     )
                     _card_close(
                         f'<span class="dcf-stat">Razones únicas · <b>{df["razon_metodo"].nunique()}</b></span>'
@@ -503,7 +507,7 @@ def main():
                            "ti-chart-bar-popular")
                 st.plotly_chart(
                     grafica_cross_apilada(df, "tipo_comercio", "metodo_pago_preferido"),
-                    use_container_width=True, config=plotly_cfg,
+                    use_container_width=True, config=plotly_cfg, key="chart_cross_comercio",
                 )
                 _card_close(
                     '<span class="dcf-stat">Lectura · qué se paga en cada comercio</span>'
@@ -516,7 +520,7 @@ def main():
                            "ti-clock-bolt")
                 st.plotly_chart(
                     grafica_frecuencia_uso_pareada(df),
-                    use_container_width=True, config=plotly_cfg,
+                    use_container_width=True, config=plotly_cfg, key="chart_frecuencia_uso",
                 )
                 _card_close(
                     '<span class="dcf-stat">Barras agrupadas · comparación directa por nivel</span>'
@@ -530,6 +534,7 @@ def main():
                     st.plotly_chart(
                         grafica_donut(df, "genero"),
                         use_container_width=True, config={"displayModeBar": False},
+                        key="chart_genero",
                     )
                     _card_close()
             with cols_demo[1]:
@@ -537,14 +542,14 @@ def main():
                     _card_open("Ocupación de los encuestados", "ti-briefcase-2")
                     st.plotly_chart(
                         grafica_barras_categoria(df, "ocupacion", horizontal=True, top_n=10),
-                        use_container_width=True, config=plotly_cfg,
+                        use_container_width=True, config=plotly_cfg, key="chart_ocupacion",
                     )
                     _card_close(
                         f'<span class="dcf-stat">Categorías · <b>{df["ocupacion"].nunique()}</b></span>'
                         '<span class="dcf-stat">Top 10 mostrados</span>'
                     )
 
-            with st.expander("📋 Datos crudos · descarga CSV"):
+            with st.expander("Datos crudos · descarga CSV"):
                 tab_mp = tabla_frecuencias(df, "metodo_pago_preferido")
                 st.dataframe(tab_mp, use_container_width=True, hide_index=True)
                 st.download_button(
@@ -564,6 +569,23 @@ def main():
             """, unsafe_allow_html=True)
 
     with tab3:
+        geo = st.session_state.get("geo_exclusion")
+        if geo:
+            st.markdown(f"""
+            <div class="decision-card bajo fade-in" style="border-left:4px solid #1565C0">
+                <div class="d-label" style="color:#1565C0">
+                    <i class="ti ti-info-circle"></i> Nota metodológica
+                </div>
+                <p>
+                    La encuesta recolectó <strong>{geo['total_original']}</strong> respuestas en total.
+                    Se incluyeron <strong>{geo['incluidos']}</strong> registros correspondientes a
+                    residentes de <strong>Cobán, Alta Verapaz</strong> (municipio de estudio).
+                    Los <strong>{geo['excluidos']}</strong> registros restantes provienen de otros
+                    municipios y fueron excluidos del análisis estadístico para garantizar la
+                    validez interna del estudio.
+                </p>
+            </div>""", unsafe_allow_html=True)
+
         if decisiones:
             st.markdown(
                 '<p class="section-title"><i class="ti ti-briefcase"></i> Conclusiones y recomendaciones empresariales</p>',

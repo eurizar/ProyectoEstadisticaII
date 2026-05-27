@@ -2,6 +2,7 @@
 
 import streamlit as st
 import pandas as pd
+import io
 
 st.set_page_config(
     page_title="Cargar Datos — Estadística II UMG",
@@ -35,26 +36,31 @@ def main():
     with col_guide:
         st.markdown("""
         <div class="upload-guide fade-in">
-            <h4><i class="ti ti-list-check"></i> Columnas requeridas</h4>
+            <h4><i class="ti ti-list-check"></i> Formatos aceptados</h4>
             <ul>
-                <li>edad</li><li>grupo_etario</li><li>genero</li>
-                <li>ocupacion</li><li>ingreso_mensual</li>
-                <li>metodo_pago_preferido</li><li>frecuencia_efectivo</li>
-                <li>frecuencia_digital</li><li>tipo_comercio</li>
-                <li>gasto_semanal</li><li>razon_metodo</li>
-                <li>uso_billetera_digital</li><li>confianza_digital</li>
+                <li><strong>Google Forms (.xlsx)</strong> — exportación directa, se transforma automáticamente</li>
+                <li><strong>Plantilla propia (.xlsx / .csv)</strong> — columnas normalizadas</li>
             </ul>
         </div>
         <div class="info-box">
-            <strong><i class="ti ti-file-type-csv"></i> Formatos:</strong>
-            .csv · .xlsx · .xls<br><br>
+            <strong><i class="ti ti-file-spreadsheet"></i> Formatos:</strong>
+            .xlsx · .xls · .csv<br><br>
             <strong><i class="ti ti-circle-check"></i> Mínimo:</strong> 10 registros válidos<br>
-            <strong><i class="ti ti-target"></i> Ideal:</strong> 50 encuestas
+            <strong><i class="ti ti-target"></i> Ideal:</strong> 50 encuestas<br><br>
+            <strong><i class="ti ti-filter"></i> Filtro automático:</strong>
+            Solo residentes de Cobán
         </div>
         """, unsafe_allow_html=True)
 
         st.download_button(
-            "Descargar plantilla CSV",
+            "⬇ Plantilla Excel (.xlsx)",
+            data=_plantilla_xlsx(),
+            file_name="plantilla_encuesta.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+        )
+        st.download_button(
+            "⬇ Plantilla CSV",
             data=_plantilla_csv(),
             file_name="plantilla_encuesta.csv",
             mime="text/csv",
@@ -118,9 +124,8 @@ def main():
                 '<p class="section-title"><i class="ti ti-table"></i> Vista previa</p>',
                 unsafe_allow_html=True,
             )
-            st.dataframe(df.head(10), use_container_width=True, hide_index=True)
-            if len(df) > 10:
-                st.caption(f"Mostrando 10 de {len(df)} registros.")
+            st.dataframe(df, use_container_width=True, hide_index=True, height=350)
+            st.caption(f"Mostrando {len(df)} registros.")
 
             st.markdown(
                 '<p class="section-title"><i class="ti ti-database-import"></i> Guardar en base de datos</p>',
@@ -133,18 +138,52 @@ def main():
                 asociados a tu cuenta. Verifica que los datos son correctos.
             </div>""", unsafe_allow_html=True)
 
+            @st.dialog("Datos guardados en base de datos")
+            def _modal_guardado(total):
+                st.markdown(f"""
+                <div style="text-align:center; padding:1rem 0">
+                    <div style="font-size:2.5rem; color:#1B5E20"><i class="ti ti-circle-check"></i></div>
+                    <p style="font-size:1.1rem; font-weight:600; margin:.5rem 0">
+                        {total} registros almacenados correctamente
+                    </p>
+                    <p style="color:var(--text-400); font-size:.9rem">
+                        Los datos están disponibles en la base de datos.<br>
+                        Puedes ejecutar el análisis estadístico ahora.
+                    </p>
+                </div>""", unsafe_allow_html=True)
+                if st.button("Ir a Nuevo Análisis", type="primary", use_container_width=True):
+                    st.switch_page("pages/3_Nuevo_Analisis.py")
+
+            @st.dialog("Datos listos para análisis")
+            def _modal_sesion(total):
+                st.markdown(f"""
+                <div style="text-align:center; padding:1rem 0">
+                    <div style="font-size:2.5rem; color:#1565C0"><i class="ti ti-device-floppy"></i></div>
+                    <p style="font-size:1.1rem; font-weight:600; margin:.5rem 0">
+                        {total} registros cargados en sesión
+                    </p>
+                    <p style="color:var(--text-400); font-size:.9rem">
+                        Los datos no se guardaron en la base de datos.<br>
+                        Puedes ejecutar el análisis estadístico ahora.
+                    </p>
+                </div>""", unsafe_allow_html=True)
+                if st.button("Ir a Nuevo Análisis", type="primary", use_container_width=True):
+                    st.switch_page("pages/3_Nuevo_Analisis.py")
+
             col_b1, col_b2, _ = st.columns([2, 2, 2])
             with col_b1:
-                if st.button("Guardar en Supabase", use_container_width=True, type="primary"):
+                if st.button("Guardar en base de datos", use_container_width=True, type="primary"):
                     with st.spinner("Guardando registros..."):
                         try:
                             from modules.db import guardar_encuestas
                             ok, msg = guardar_encuestas(df, user_id)
                             if ok:
                                 st.session_state["df_encuestas"] = df
-                                st.success(f"✓ {msg}")
+                                if reporte.get("geo_data"):
+                                    st.session_state["geo_exclusion"] = reporte["geo_data"]
                                 from modules.ui_helpers import lanzar_confeti
                                 lanzar_confeti()
+                                _modal_guardado(reporte["total_registros"])
                             else:
                                 st.error(msg)
                         except Exception as e:
@@ -152,7 +191,9 @@ def main():
             with col_b2:
                 if st.button("Usar sin guardar", use_container_width=True):
                     st.session_state["df_encuestas"] = df
-                    st.success("Datos cargados en sesión.")
+                    if reporte.get("geo_data"):
+                        st.session_state["geo_exclusion"] = reporte["geo_data"]
+                    _modal_sesion(reporte["total_registros"])
         else:
             st.markdown("""
             <div class="empty-state fade-in">
@@ -169,6 +210,29 @@ def _plantilla_csv() -> str:
     row = ("22,18-25,Masculino,Estudia,<Q1500,Billetera digital,"
            "A veces,Casi siempre,Supermercado,250.00,Rapidez,True,4")
     return f"{cols}\n{row}"
+
+
+def _plantilla_xlsx() -> bytes:
+    datos = {
+        "edad":                  [22, 30, 43],
+        "grupo_etario":          ["18-25", "26-35", "36-50"],
+        "genero":                ["Masculino", "Femenino", "Masculino"],
+        "ocupacion":             ["Estudia", "Trabaja", "Ambas"],
+        "ingreso_mensual":       ["<Q1500", "Q1500-3000", "Q3000-5000"],
+        "metodo_pago_preferido": ["Billetera digital", "Efectivo", "Tarjeta debito"],
+        "frecuencia_efectivo":   ["A veces", "Siempre", "Casi siempre"],
+        "frecuencia_digital":    ["Casi siempre", "Nunca", "A veces"],
+        "tipo_comercio":         ["Supermercado", "Tienda de barrio", "Restaurante / comedor"],
+        "gasto_semanal":         [250.00, 400.00, 600.00],
+        "razon_metodo":          ["Rapidez", "Costumbre", "Seguridad"],
+        "uso_billetera_digital": [True, False, True],
+        "confianza_digital":     [4, 2, 5],
+    }
+    df = pd.DataFrame(datos)
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="encuestas")
+    return buf.getvalue()
 
 
 main()

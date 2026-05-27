@@ -98,7 +98,7 @@ def main():
             )
 
         if ejecutar:
-            _ejecutar_analisis(df, user_id, nombre, descripcion, alpha)
+            _abrir_modal_analisis(df, user_id, nombre, descripcion, alpha)
 
     with col_hyp:
         st.markdown(
@@ -140,136 +140,166 @@ def main():
         """, unsafe_allow_html=True)
 
 
-def _ejecutar_analisis(df, user_id, nombre, descripcion, alpha):
-    from modules.pruebas import ejecutar_todas_las_pruebas
-    from modules.decisiones import generar_todas_las_decisiones
-    from modules.graficas import grafica_resumen_kpis
-
-    progress = st.progress(0, "Iniciando análisis...")
-
-    try:
-        progress.progress(10, "Ejecutando prueba t de Student...")
-        resultados = {}
-        from modules.pruebas import prueba_t_student
-        from modules.carga_datos import separar_grupos_pago
-        try:
-            ef, dig = separar_grupos_pago(df)
-            resultados["t_student"] = prueba_t_student(ef, dig, alpha)
-        except Exception as e:
-            resultados["t_student"] = f"Error: {str(e)}"
-
-        progress.progress(35, "Ejecutando prueba Chi-cuadrado...")
-        from modules.pruebas import prueba_chi_cuadrado
-        try:
-            resultados["chi_cuadrado"] = prueba_chi_cuadrado(df, alpha=alpha)
-        except Exception as e:
-            resultados["chi_cuadrado"] = f"Error: {str(e)}"
-
-        progress.progress(60, "Ejecutando prueba Z para proporción...")
-        from modules.pruebas import prueba_z_proporcion
-        try:
-            resultados["z_proporcion"] = prueba_z_proporcion(df["uso_billetera_digital"], alpha=alpha)
-        except Exception as e:
-            resultados["z_proporcion"] = f"Error: {str(e)}"
-
-        progress.progress(75, "Generando decisiones empresariales...")
-        decisiones = generar_todas_las_decisiones(resultados)
-
-        progress.progress(85, "Guardando en Supabase...")
-        analisis_id = None
-        try:
-            from modules.db import guardar_analisis, guardar_resultado_prueba, guardar_decision
-            analisis_id = guardar_analisis(user_id, nombre, descripcion, len(df), alpha)
-            if analisis_id:
-                for clave, res in resultados.items():
-                    from modules.pruebas import ResultadoPrueba
-                    if isinstance(res, ResultadoPrueba):
-                        guardar_resultado_prueba(
-                            analisis_id, res.tipo_prueba, res.estadistico,
-                            res.p_valor, res.grados_libertad, res.rechaza_h0, res.detalles,
-                        )
-                for dec in decisiones:
-                    guardar_decision(analisis_id, dec.decision, dec.conclusion,
-                                     dec.recomendacion, dec.nivel_alerta)
-        except Exception as e:
-            st.warning(f"No se pudo guardar en Supabase: {str(e)}")
-
-        progress.progress(100, "Análisis completado.")
-
-        kpis = grafica_resumen_kpis(df)
-        info_analisis = {
-            "id": analisis_id,
-            "nombre": nombre,
-            "descripcion": descripcion,
-            "total_registros": len(df),
-            "alpha": alpha,
+def _abrir_modal_analisis(df, user_id, nombre, descripcion, alpha):
+    @st.dialog("Ejecutando análisis estadístico", width="large")
+    def _modal():
+        st.markdown("""
+        <style>
+        div[data-testid="stProgress"] > div > div { background:#1a2744 !important; border-radius:99px; }
+        div[data-testid="stProgress"] > div > div > div {
+            background: linear-gradient(90deg, #0077B6, #00B4D8, #0096C7, #0077B6) !important;
+            background-size: 300% 100% !important;
+            border-radius: 99px;
+            animation: barraFlow 1.8s linear infinite;
         }
-        st.session_state["ultimo_analisis"] = info_analisis
-        st.session_state["resultados_pruebas"] = resultados
-        st.session_state["decisiones"] = [d.a_dict() for d in decisiones]
-        st.session_state["kpis"] = kpis
+        @keyframes barraFlow {
+            0%   { background-position: 100% 0; }
+            100% { background-position:   0% 0; }
+        }
+        .paso-item { display:flex; align-items:center; gap:.6rem; padding:.35rem 0;
+                     font-size:.9rem; color:#444; }
+        .paso-item.done { color:#1B5E20; font-weight:600; }
+        .paso-item.active { color:#0077B6; font-weight:600; }
+        .paso-dot { width:10px; height:10px; border-radius:50%; background:#ddd; flex-shrink:0; }
+        .paso-dot.done { background:#1B5E20; }
+        .paso-dot.active { background:#0077B6; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+        </style>""", unsafe_allow_html=True)
 
-        # ── Resumen inmediato ──────────────────────────────────
-        st.markdown(
-            '<p class="section-title"><i class="ti ti-circle-check"></i> Resultados obtenidos</p>',
-            unsafe_allow_html=True,
-        )
+        st.markdown(f"""
+        <div style="text-align:center; padding:.5rem 0 1rem">
+            <p style="color:#666; font-size:.9rem; margin:0">
+                {nombre} · α = {alpha} · {len(df)} registros
+            </p>
+        </div>""", unsafe_allow_html=True)
 
+        barra    = st.progress(0)
+        estado   = st.empty()
+        pasos_ph = st.empty()
+
+        PASOS = [
+            "t de Student",
+            "Chi-cuadrado",
+            "Z para proporción",
+            "Decisiones empresariales",
+            "Guardando resultados",
+        ]
+
+        def _render_pasos(actual):
+            html = ""
+            for i, p in enumerate(PASOS):
+                if i < actual:
+                    html += f'<div class="paso-item done"><div class="paso-dot done"></div>{p} — listo</div>'
+                elif i == actual:
+                    html += f'<div class="paso-item active"><div class="paso-dot active"></div>{p}...</div>'
+                else:
+                    html += f'<div class="paso-item"><div class="paso-dot"></div>{p}</div>'
+            pasos_ph.markdown(html, unsafe_allow_html=True)
+
+        from modules.decisiones import generar_todas_las_decisiones
+        from modules.graficas import grafica_resumen_kpis
         from modules.pruebas import ResultadoPrueba
-        nombres = {
-            "t_student": "t de Student",
-            "chi_cuadrado": "Chi-cuadrado",
-            "z_proporcion": "Z Proporción",
-        }
-        for clave, res in resultados.items():
-            if isinstance(res, ResultadoPrueba):
-                clase = "rechaza" if res.rechaza_h0 else "no-rechaza"
-                icon_color = "#E53935" if res.rechaza_h0 else "#2E7D32"
-                icon_name = "ti-circle-x" if res.rechaza_h0 else "ti-circle-check"
-                decision_txt = "Rechaza H₀" if res.rechaza_h0 else "No rechaza H₀"
-                st.markdown(f"""
-                <div class="result-card {clase}">
-                    <div class="test-name">
-                        <i class="ti {icon_name}" style="color:{icon_color}"></i>
-                        {nombres.get(clave, res.tipo_prueba)}
-                    </div>
-                    <div class="stat-grid">
-                        <div class="stat-item">
-                            <div class="slabel">Estadístico</div>
-                            <div class="svalue">{res.estadistico:.4f}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="slabel">p-valor</div>
-                            <div class="svalue">{res.p_valor:.6f}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="slabel">Decisión</div>
-                            <div class="svalue" style="font-family:var(--font-body);font-size:.9rem">
-                                {decision_txt}
-                            </div>
-                        </div>
-                    </div>
-                </div>""", unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div class="decision-card medio">
-                    <div class="d-label">
-                        <i class="ti ti-alert-triangle"></i> {nombres.get(clave, clave)}
-                    </div>
-                    <p>{res}</p>
-                </div>""", unsafe_allow_html=True)
 
-        col_r1, col_r2 = st.columns(2)
-        with col_r1:
-            if st.button("Ver resultados completos", use_container_width=True):
-                st.switch_page("pages/4_Resultados.py")
-        with col_r2:
-            if st.button("Exportar PDF", use_container_width=True):
-                st.switch_page("pages/6_Exportar.py")
+        resultados = {}
+        try:
+            # Paso 0 — t de Student
+            _render_pasos(0); barra.progress(10); estado.caption("Prueba t de Student...")
+            from modules.pruebas import prueba_t_student
+            from modules.carga_datos import separar_grupos_pago
+            try:
+                ef, dig = separar_grupos_pago(df)
+                resultados["t_student"] = prueba_t_student(ef, dig, alpha)
+            except Exception as e:
+                resultados["t_student"] = f"Error: {str(e)}"
 
-    except Exception as e:
-        st.error(f"Error inesperado en el análisis: {str(e)}")
-        progress.progress(0)
+            # Paso 1 — Chi-cuadrado
+            _render_pasos(1); barra.progress(35); estado.caption("Prueba Chi-cuadrado...")
+            from modules.pruebas import prueba_chi_cuadrado
+            try:
+                resultados["chi_cuadrado"] = prueba_chi_cuadrado(df, alpha=alpha)
+            except Exception as e:
+                resultados["chi_cuadrado"] = f"Error: {str(e)}"
+
+            # Paso 2 — Z proporción
+            _render_pasos(2); barra.progress(60); estado.caption("Prueba Z para proporción...")
+            from modules.pruebas import prueba_z_proporcion
+            try:
+                resultados["z_proporcion"] = prueba_z_proporcion(df["uso_billetera_digital"], alpha=alpha)
+            except Exception as e:
+                resultados["z_proporcion"] = f"Error: {str(e)}"
+
+            # Paso 3 — Decisiones
+            _render_pasos(3); barra.progress(75); estado.caption("Generando decisiones empresariales...")
+            decisiones = generar_todas_las_decisiones(resultados)
+
+            # Paso 4 — Guardar
+            _render_pasos(4); barra.progress(88); estado.caption("Guardando en base de datos...")
+            analisis_id = None
+            try:
+                from modules.db import guardar_analisis, guardar_resultado_prueba, guardar_decision
+                analisis_id = guardar_analisis(user_id, nombre, descripcion, len(df), alpha)
+                if analisis_id:
+                    for clave, res in resultados.items():
+                        if isinstance(res, ResultadoPrueba):
+                            guardar_resultado_prueba(
+                                analisis_id, res.tipo_prueba, res.estadistico,
+                                res.p_valor, res.grados_libertad, res.rechaza_h0, res.detalles,
+                            )
+                    for dec in decisiones:
+                        guardar_decision(analisis_id, dec.decision, dec.conclusion,
+                                         dec.recomendacion, dec.nivel_alerta)
+            except Exception:
+                pass
+
+            # Completado
+            _render_pasos(len(PASOS)); barra.progress(100); estado.empty()
+
+            kpis = grafica_resumen_kpis(df)
+            st.session_state["ultimo_analisis"] = {
+                "id": analisis_id, "nombre": nombre,
+                "descripcion": descripcion, "total_registros": len(df), "alpha": alpha,
+            }
+            st.session_state["resultados_pruebas"] = resultados
+            st.session_state["decisiones"] = [d.a_dict() for d in decisiones]
+            st.session_state["kpis"] = kpis
+
+            # Resumen de resultados
+            nombres_pr = {"t_student": "t de Student", "chi_cuadrado": "Chi-cuadrado", "z_proporcion": "Z Proporción"}
+            resumen_html = '<div style="display:flex; gap:.75rem; flex-wrap:wrap; margin:1rem 0">'
+            for clave, res in resultados.items():
+                if isinstance(res, ResultadoPrueba):
+                    color  = "#E53935" if res.rechaza_h0 else "#2E7D32"
+                    icono  = "ti-circle-x" if res.rechaza_h0 else "ti-circle-check"
+                    texto  = "Rechaza H₀" if res.rechaza_h0 else "No rechaza H₀"
+                    resumen_html += f"""
+                    <div style="flex:1; min-width:160px; border:1.5px solid {color}33;
+                                border-radius:10px; padding:.75rem; text-align:center">
+                        <div style="font-size:.78rem; color:#666; margin-bottom:.3rem">
+                            {nombres_pr.get(clave, clave)}
+                        </div>
+                        <div style="font-size:1.05rem; font-weight:700; color:{color}">
+                            <i class="ti {icono}"></i> {texto}
+                        </div>
+                        <div style="font-size:.78rem; color:#888; margin-top:.2rem">
+                            p = {res.p_valor:.4f}
+                        </div>
+                    </div>"""
+            resumen_html += "</div>"
+            st.markdown(resumen_html, unsafe_allow_html=True)
+
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Ver resultados completos", type="primary", use_container_width=True):
+                    st.switch_page("pages/4_Resultados.py")
+            with col2:
+                if st.button("Exportar PDF", use_container_width=True):
+                    st.switch_page("pages/6_Exportar.py")
+
+        except Exception as e:
+            barra.progress(0)
+            st.error(f"Error inesperado: {str(e)}")
+
+    _modal()
 
 
 main()

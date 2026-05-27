@@ -104,10 +104,10 @@ def iniciar_sesion(email: str, contrasena: str) -> tuple[bool, str]:
     except Exception as e:
         msg = str(e)
         if "Invalid login credentials" in msg:
-            return False, "Email o contrasena incorrectos."
+            return False, "Email o contraseña incorrectos."
         if "Email not confirmed" in msg:
             return False, "Debes confirmar tu email antes de ingresar."
-        return False, f"Error de autenticacion: {msg}"
+        return False, "No se pudo conectar al servicio. Intenta de nuevo más tarde."
 
 
 def cerrar_sesion() -> None:
