@@ -10,6 +10,33 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+st.markdown("""
+<script>
+(function() {
+    var head = window.parent.document.head;
+    var metas = [
+        ["property", "og:title",       "Sistema de Análisis Estadístico · UMG Cobán"],
+        ["property", "og:description", "Aplicación web para análisis estadístico inferencial de hábitos de pago. Pruebas t de Student, Chi-cuadrado y Z para proporción · Estadística II"],
+        ["property", "og:type",        "website"],
+        ["property", "og:url",         "https://analisis-estadistico-umg.onrender.com"],
+        ["property", "og:image",       "https://analisis-estadistico-umg.onrender.com/app/static/Estadistica.jpg"],
+        ["property", "og:image:width",  "1200"],
+        ["property", "og:image:height", "630"],
+        ["name",     "twitter:card",        "summary"],
+        ["name",     "twitter:title",       "Sistema de Análisis Estadístico · UMG Cobán"],
+        ["name",     "twitter:description", "Análisis de hábitos de pago en consumidores de Cobán, Alta Verapaz · UMG 2026"],
+        ["name",     "description",         "Aplicación estadística inferencial — Hábitos de pago · UMG Campus Cobán 2026"],
+    ];
+    metas.forEach(function(m) {
+        var el = window.parent.document.createElement("meta");
+        el.setAttribute(m[0], m[1]);
+        el.setAttribute("content", m[2]);
+        head.appendChild(el);
+    });
+})();
+</script>
+""", unsafe_allow_html=True)
+
 
 LOGIN_CSS = """
 <style>
