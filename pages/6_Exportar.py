@@ -16,7 +16,7 @@ from modules.ui_helpers import cargar_estilos, sidebar_usuario
 def main():
     cargar_estilos()
     from modules.auth import requerir_autenticacion, obtener_user_email
-    requerir_autenticacion()
+    requerir_autenticacion(permitir_publico=True)
     sidebar_usuario("Exportar")
     user_email = obtener_user_email() or "usuario@umg.edu.gt"
 
