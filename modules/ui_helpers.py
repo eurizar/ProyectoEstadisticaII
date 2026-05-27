@@ -4,9 +4,20 @@ import streamlit as st
 from pathlib import Path
 
 
+@st.cache_resource
+def _leer_css_ui(path: str) -> str:
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    except Exception:
+        return ""
+
+
 def cargar_estilos(es_pagina: bool = True):
     """Inyecta Google Fonts, Tabler Icons, CSS y orbs animados."""
     st.markdown("""
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
     <div class="bg-orbs" aria-hidden="true">
@@ -16,10 +27,10 @@ def cargar_estilos(es_pagina: bool = True):
     </div>
     """, unsafe_allow_html=True)
 
-    css_path = Path(__file__).parent.parent / "assets" / "style.css"
-    if css_path.exists():
-        with open(css_path, encoding="utf-8") as f:
-            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    css_path = str(Path(__file__).parent.parent / "assets" / "style.css")
+    css = _leer_css_ui(css_path)
+    if css:
+        st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
     # Loader lives outside Streamlit's React tree so navigation doesn't reset it.
     # The script creates the element once and appends to document.body of the
@@ -156,7 +167,7 @@ def sidebar_usuario(pagina_actual: str = ""):
             ("pages/3_Nuevo_Analisis.py", "Nuevo Análisis", ":material/science:",          False),
             ("pages/4_Resultados.py",     "Resultados",     ":material/bar_chart:",        True),
             ("pages/5_Historico.py",      "Histórico",      ":material/history:",          False),
-            ("pages/6_Exportar.py",       "Exportar PDF",   ":material/picture_as_pdf:",   False),
+            ("pages/6_Exportar.py",       "Exportar PDF",   ":material/picture_as_pdf:",   True),
         ]
 
         _DISABLED_ICONS = {

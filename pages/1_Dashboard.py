@@ -104,6 +104,21 @@ def main():
 
     # ── Distribución geográfica ───────────────────────────────
     geo = st.session_state.get("geo_exclusion")
+    # En modo visitante geo_exclusion no se carga — mostrar nota estática si el df tiene 41 registros
+    if not geo and not df.empty and len(df) == 41:
+        st.markdown("""
+        <div class="decision-card bajo fade-in" style="border-left:4px solid #1565C0; margin-bottom:1rem">
+            <div class="d-label" style="color:#1565C0">
+                <i class="ti ti-info-circle"></i> Nota metodológica
+            </div>
+            <p>
+                De las <strong>53</strong> encuestas recolectadas,
+                <strong>41</strong> corresponden a residentes de
+                <strong>Cobán, Alta Verapaz</strong> y forman la muestra de análisis.
+                Las <strong>12</strong> respuestas de otros municipios
+                no se incluyen en las pruebas estadísticas ni en las conclusiones del estudio.
+            </p>
+        </div>""", unsafe_allow_html=True)
     if geo and geo.get("excluidos", 0) > 0:
         st.markdown(
             '<p class="section-title"><i class="ti ti-map-pin"></i> Cobertura geográfica de la muestra</p>',

@@ -432,8 +432,19 @@ LOGIN_CSS = """
 """
 
 
+@st.cache_resource
+def _leer_css_archivo(path: str) -> str:
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    except Exception:
+        return ""
+
+
 def cargar_estilos():
     st.markdown("""
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
     <style>
@@ -441,19 +452,21 @@ def cargar_estilos():
       [data-testid="stSidebar"]{display:none!important;}
     </style>
     """, unsafe_allow_html=True)
-    css_path = Path(__file__).parent / "assets" / "style.css"
-    if css_path.exists():
-        with open(css_path, encoding="utf-8") as f:
-            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    css_path = str(Path(__file__).parent / "assets" / "style.css")
+    css = _leer_css_archivo(css_path)
+    if css:
+        st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
     st.markdown(LOGIN_CSS, unsafe_allow_html=True)
 
 
 def mostrar_login():
     cargar_estilos()
 
-    # Ensure token is cleared if the user is here (logged out or expired)
-    from modules.auth import _js_limpiar_token
-    _js_limpiar_token()
+    # Limpiar token solo una vez por sesion (no en cada re-render)
+    if not st.session_state.get("_token_limpiado"):
+        from modules.auth import _js_limpiar_token
+        _js_limpiar_token()
+        st.session_state["_token_limpiado"] = True
 
     # Sentinel marker scopes the login-only CSS
     st.markdown('<div id="login-pavilion"></div>', unsafe_allow_html=True)
