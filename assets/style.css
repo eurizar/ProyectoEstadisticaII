@@ -1371,6 +1371,15 @@ header[data-testid="stHeader"]{
   100% { opacity: 0.18; }
 }
 
+/* ── Mobile: evitar que graficas Plotly capturen el scroll vertical ────── */
+.js-plotly-plot,
+.js-plotly-plot .plotly,
+.js-plotly-plot .svg-container,
+.js-plotly-plot .main-svg,
+[data-testid="stPlotlyChart"] > div {
+    touch-action: pan-y !important;
+}
+
 /* Collapse the 1px components.html iframe used for the loader script */
 iframe[title="st_components_v1"]{
   display: block !important;
