@@ -36,6 +36,34 @@ def main():
     df = st.session_state.get("df_encuestas", pd.DataFrame())
     kpis = st.session_state.get("kpis", {})
 
+    # Modo visitante sin resultados en sesion → cargar ultimo analisis publico
+    from modules.auth import es_modo_publico
+    if es_modo_publico() and not resultados:
+        with st.spinner("Cargando último análisis disponible..."):
+            try:
+                from modules.db import obtener_ultimo_analisis_publico
+                from modules.graficas import grafica_resumen_kpis
+                datos = obtener_ultimo_analisis_publico()
+                if datos and "resultados" in datos:
+                    analisis = datos["analisis"]
+                    resultados = datos["resultados"]
+                    decisiones = [d for d in (datos.get("decisiones") or [])]
+                    df = datos.get("df_encuestas", pd.DataFrame())
+                    analisis_info = {
+                        "nombre": analisis.get("nombre", "Análisis"),
+                        "total_registros": analisis.get("total_registros", 0),
+                        "alpha": analisis.get("alpha", 0.05),
+                    }
+                    if not df.empty:
+                        k = grafica_resumen_kpis(df)
+                        kpis = k
+                    st.session_state["resultados_pruebas"] = resultados
+                    st.session_state["decisiones"] = decisiones
+                    st.session_state["ultimo_analisis"] = analisis_info
+                    st.session_state["kpis"] = kpis
+            except Exception:
+                pass
+
     col_main, col_side = st.columns([3, 1])
 
     with col_side:
