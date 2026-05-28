@@ -90,6 +90,19 @@ def cargar_estilos(es_pagina: bool = True):
             win.hideAppLoader();
         }
 
+        // Auto-collapse sidebar on mobile (once per page load)
+        if (win.innerWidth <= 768) {
+            function collapseSidebar() {
+                var btn = doc.querySelector(
+                    '[data-testid="stSidebarCollapseButton"] button,' +
+                    '[data-testid="collapsedControl"] button'
+                );
+                if (btn) { btn.click(); }
+                else { setTimeout(collapseSidebar, 300); }
+            }
+            setTimeout(collapseSidebar, 400);
+        }
+
         // Hide when stMain content updates (page finished rendering)
         function watchMain() {
           var main = doc.querySelector('[data-testid="stMain"]');

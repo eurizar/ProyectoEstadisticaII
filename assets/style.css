@@ -1376,9 +1376,13 @@ header[data-testid="stHeader"]{
 .js-plotly-plot .plotly,
 .js-plotly-plot .svg-container,
 .js-plotly-plot .main-svg,
+.js-plotly-plot svg,
+.js-plotly-plot .nsewdrag,
+.js-plotly-plot .drag,
 [data-testid="stPlotlyChart"] > div {
     touch-action: pan-y !important;
 }
+
 
 /* Collapse the 1px components.html iframe used for the loader script */
 iframe[title="st_components_v1"]{
