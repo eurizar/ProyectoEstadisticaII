@@ -1371,16 +1371,16 @@ header[data-testid="stHeader"]{
   100% { opacity: 0.18; }
 }
 
-/* ── Mobile: evitar que graficas Plotly capturen el scroll vertical ────── */
-.js-plotly-plot,
-.js-plotly-plot .plotly,
-.js-plotly-plot .svg-container,
-.js-plotly-plot .main-svg,
-.js-plotly-plot svg,
-.js-plotly-plot .nsewdrag,
-.js-plotly-plot .drag,
-[data-testid="stPlotlyChart"] > div {
-    touch-action: pan-y !important;
+/* ── Mobile: deshabilitar capa drag Plotly para que scroll pase al browser */
+@media (max-width: 768px) {
+    .js-plotly-plot .drag,
+    .js-plotly-plot .nsewdrag,
+    .js-plotly-plot .nwdrag,
+    .js-plotly-plot .nedrag,
+    .js-plotly-plot .swdrag,
+    .js-plotly-plot .sedrag {
+        pointer-events: none !important;
+    }
 }
 
 
